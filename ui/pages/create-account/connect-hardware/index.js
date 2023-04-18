@@ -53,10 +53,15 @@ const TREZOR_HD_PATHS = [
   { name: `Trezor Testnets`, value: TREZOR_TESTNET_PATH },
 ];
 
+const SELF_HD_PATHS = [
+  { name: `BIP44 Standard (e.g. MetaMask, Self)`, value: BIP44_PATH },
+];
+
 const HD_PATHS = {
   ledger: LEDGER_HD_PATHS,
   lattice: LATTICE_HD_PATHS,
   trezor: TREZOR_HD_PATHS,
+  self: SELF_HD_PATHS,
 };
 
 class ConnectHardwareForm extends Component {
@@ -111,7 +116,7 @@ class ConnectHardwareForm extends Component {
     }
 
     // Default values
-    this.getPage(device, 0, this.props.defaultHdPaths[device]);
+    this.getPage(device, 0, this.props.defaultHdPaths[device.toLowerCase()]);
   };
 
   onPathChange = (path) => {
