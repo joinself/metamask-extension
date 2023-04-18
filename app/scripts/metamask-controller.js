@@ -23,6 +23,7 @@ import TrezorKeyring from 'eth-trezor-keyring';
 import LedgerBridgeKeyring from '@metamask/eth-ledger-bridge-keyring';
 import LatticeKeyring from 'eth-lattice-keyring';
 import { MetaMaskKeyring as QRHardwareKeyring } from '@keystonehq/metamask-airgapped-keyring';
+import SelfKeyring from './self/self-keyring';
 import EthQuery from 'eth-query';
 import nanoid from 'nanoid';
 import { captureException } from '@sentry/browser';
@@ -182,6 +183,7 @@ import {
 } from './controllers/permissions';
 import createRPCMethodTrackingMiddleware from './lib/createRPCMethodTrackingMiddleware';
 import { securityProviderCheck } from './lib/security-provider-helpers';
+import SelfConnect from './self/SelfConnect';
 
 export const METAMASK_CONTROLLER_EVENTS = {
   // Fired after state changes that impact the extension badge (unapproved msg count)
@@ -665,6 +667,7 @@ export default class MetamaskController extends EventEmitter {
         keyringOverrides?.trezor || TrezorKeyring,
         keyringOverrides?.ledger || LedgerBridgeKeyring,
         keyringOverrides?.lattice || LatticeKeyring,
+        keyringOverrides?.self || SelfKeyring,
         QRHardwareKeyring,
       ];
       additionalKeyrings = additionalKeyringTypes.map((keyringType) =>
@@ -2520,6 +2523,7 @@ export default class MetamaskController extends EventEmitter {
       ledger: [],
       trezor: [],
       lattice: [],
+      self: [],
     };
 
     // transactions
@@ -2700,9 +2704,12 @@ export default class MetamaskController extends EventEmitter {
       case HardwareDeviceNames.lattice:
         keyringName = keyringOverrides?.lattice?.type || LatticeKeyring.type;
         break;
+      case HardwareDeviceNames.self:
+        keyringName = keyringOverrides?.self?.type || SelfKeyring.type;
+        break
       default:
         throw new Error(
-          'MetamaskController:getKeyringForDevice - Unknown device',
+          'MetamaskController:getKeyringForDevice - Unknown device ' + deviceName,
         );
     }
     let [keyring] = await this.keyringController.getKeyringsByType(keyringName);

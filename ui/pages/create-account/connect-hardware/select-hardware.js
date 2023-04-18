@@ -135,6 +135,11 @@ export default class SelectHardware extends Component {
           {this.shouldShowConnectButton() &&
             this.renderConnectToLatticeButton()}
           {this.renderConnectToQRButton()}
+        </div>
+        <div
+          className="hw-connect__btn-wrapper"
+          style={{ margin: '10px 0 0 0', paddingLeft: '10px' }}
+        >
           {this.renderConnectToSelfButton()}
         </div>
       </>
@@ -594,72 +599,6 @@ export default class SelectHardware extends Component {
           <div className="hw-connect" key={index}>
             {step.title && <h3 className="hw-connect__title">{step.title}</h3>}
             <div className="hw-connect__msg">{step.message}</div>
-            {step.asset && (
-              <img
-                className="hw-connect__step-asset"
-                src={`images/${step.asset}.svg`}
-                {...step.dimensions}
-                alt=""
-              />
-            )}
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  renderLatticeTutorialSteps() {
-    const steps = [
-      {
-        asset: 'connect-lattice',
-        dimensions: { width: '225px', height: '75px' },
-        title: this.context.t('step1LatticeWallet'),
-        message: this.context.t('step1LatticeWalletMsg', [
-          <a
-            className="hw-connect__msg-link"
-            href={ZENDESK_URLS.HARDWARE_CONNECTION}
-            rel="noopener noreferrer"
-            target="_blank"
-            key="lattice-setup-link"
-          >
-            {this.context.t('hardwareWalletSupportLinkConversion')}
-          </a>,
-        ]),
-      },
-    ];
-
-    return (
-      <div className="hw-tutorial">
-        {steps.map((step, index) => (
-          <div className="hw-connect" key={index}>
-            <h3 className="hw-connect__title">{step.title}</h3>
-            <Button
-              className="hw-connect__external-btn-first"
-              type="secondary"
-              onClick={() => {
-                this.context.trackEvent({
-                  category: EVENT.CATEGORIES.NAVIGATION,
-                  event: 'Clicked GridPlus Buy Now',
-                });
-                openWindow(HardwareAffiliateLinks.gridplus);
-              }}
-            >
-              {this.context.t('buyNow')}
-            </Button>
-            <Button
-              className="hw-connect__external-btn"
-              type="secondary"
-              onClick={() => {
-                this.context.trackEvent({
-                  category: EVENT.CATEGORIES.NAVIGATION,
-                  event: 'Clicked GidPlus Tutorial',
-                });
-                openWindow(HardwareAffiliateTutorialLinks.gridplus);
-              }}
-            >
-              {this.context.t('tutorial')}
-            </Button>
-            <p className="hw-connect__msg">{step.message}</p>
             {step.asset && (
               <img
                 className="hw-connect__step-asset"

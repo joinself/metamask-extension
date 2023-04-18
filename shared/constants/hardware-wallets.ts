@@ -25,7 +25,7 @@ export enum HardwareDeviceNames {
   ledger = 'ledger',
   trezor = 'trezor',
   lattice = 'lattice',
-  self = 'self',
+  self = 'Self',
   qr = 'QR Hardware',
 }
 
