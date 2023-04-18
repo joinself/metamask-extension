@@ -38,6 +38,21 @@ class SelfKeyring extends EventEmitter {
     return;
   }
 
+  async serialize() {
+    return {
+      creds: this.creds,
+      accounts: this.accounts,
+      accountIndices: this.accountIndices,
+      accountOpts: this.accountOpts,
+      walletUID: this.walletUID,
+      appName: this.appName,
+      name: this.name,  // Legacy; use is deprecated
+      network: this.network,
+      page: this.page,
+      hdPath: this.hdPath,
+    };
+  }
+
   _resetDefaults() {
     this.accounts = [];
     this.accountIndices = [];
@@ -56,6 +71,19 @@ class SelfKeyring extends EventEmitter {
     // this.hdPath = STANDARD_HD_PATH;
   }
 
+  setHdPath(hdPath) {
+    console.log("[keyring] setHdPath to "+hdPath)
+    this.hdPath = hdPath;
+  }
+
+    // This is being called when the user selects the accounts he wents to import into metamask,
+    // and the parameter refers to the index of the account he wants to import.
+    async addAccounts(n=1) {
+      // FIXME: this is already been managed through Import accounts
+
+      return this.accounts;
+    }
+
 
   getAccounts() {
     return this.accounts ? [...this.accounts] : [];
@@ -68,11 +96,64 @@ class SelfKeyring extends EventEmitter {
     let c = new SelfConnect();
     const accounts = await c.getAccountsCloud();
     console.log("[keyring] accounts retrieved")
-    console.log("[keyring] " + accounts)
+    console.log(accounts)
+
+    this._importAccounts(accounts)
+
+    return this._getFirstAccount()
+  }
+
+  _getFirstAccount() {
+    // TODO: properly manage this
+    return [{
+      address: this.getAccounts()[0],
+      balance: null,
+      index: 0,
+    }]
+  }
+
+  async getNextPage () {
+    // TODO: properly manage this
+    return this._getFirstAccount()
+  }
+
+  async getPreviousPage () {
+    // TODO: properly manage this
+    return this._getFirstAccount()
+  }
+
+
+  setAccountToUnlock (index) {
+    this.unlockedAccount = parseInt(index, 10)
+  }
+
+  async _importAccounts(accounts) {
+    // TODO: retrieve the selfID from the server response.
+    const walletUID = "<self_id>".toString('hex');
 
     for (let i = 0; i < accounts.length; i++) {
-      // TODO: format to met Metamask account requirements.
-      this.accounts.push(accounts[i])
+      let addr = accounts[i]['address']
+      console.log(addr)
+
+      let alreadySaved = false;
+      for (let j = 0; j < this.accounts.length; j++) {
+        if ((this.accounts[j] === addr) &&
+            (this.accountOpts[j].walletUID === walletUID) &&
+            (this.accountOpts[j].hdPath === this.hdPath))
+            console.log("[keyring] account "+addr+" already saved")
+            alreadySaved = true;
+      }
+      if (!alreadySaved) {
+        console.log("[keyring] adding "+addr)
+        this.accounts.push(addr);
+        this.accountIndices.push(this.unlockedAccount+i);
+        this.accountOpts.push({
+          walletUID,
+          hdPath: this.hdPath,
+        })
+      }
+
+      // this.accounts.push(accounts[i]['address'])
     }
   }
 

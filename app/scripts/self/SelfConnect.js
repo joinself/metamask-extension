@@ -13,9 +13,7 @@ export default class SelfConnect {
     window.addEventListener(
       'message',
       (event) => {
-        console.log("[event-received] " + event.data.event_id)
         if (event.data.event_id === 'imported_accounts') {
-          console.log("[event-received] yehaaaa!!")
           newAccounts = event.data.accounts;
         }
       },
