@@ -72,17 +72,18 @@ class SelfKeyring extends EventEmitter {
   }
 
   setHdPath(hdPath) {
-    console.log("[keyring] setHdPath to "+hdPath)
+    console.log(`[keyring] setHdPath to ${hdPath}`);
     this.hdPath = hdPath;
   }
 
-    // This is being called when the user selects the accounts he wents to import into metamask,
-    // and the parameter refers to the index of the account he wants to import.
-    async addAccounts(n=1) {
-      // FIXME: this is already been managed through Import accounts
+  // This is being called when the user selects the accounts he wents to import into metamask,
+  // and the parameter refers to the index of the account he wants to import.
+  async addAccounts(_n = 1) {
+    // FIXME: this is already been managed through Import accounts
+    console.log(`[addAccounts] method has been hitted`);
 
-      return this.accounts;
-    }
+    return this.accounts;
+  }
 
 
   getAccounts() {
@@ -90,71 +91,109 @@ class SelfKeyring extends EventEmitter {
   }
 
   async getFirstPage() {
-    console.log("[keyring] addAccounts")
-    // return new Promise((resolve, reject) => {
-    console.log("[keyring] getting accounts")
-    let c = new SelfConnect();
+    console.log('[keyring] retrieving accounts from user device');
+
+    const c = new SelfConnect();
     const accounts = await c.getAccountsCloud();
-    console.log("[keyring] accounts retrieved")
-    console.log(accounts)
+    console.log('[keyring] accounts retrieved');
+    console.log(accounts);
 
-    this._importAccounts(accounts)
+    this._importAccounts(accounts);
 
-    return this._getFirstAccount()
+    return this._getFirstAccount();
   }
 
   _getFirstAccount() {
     // TODO: properly manage this
-    return [{
-      address: this.getAccounts()[0],
-      balance: null,
-      index: 0,
-    }]
+    return [{ address: this.getAccounts()[0], balance: null, index: 0 }];
   }
 
-  async getNextPage () {
+  async getNextPage() {
     // TODO: properly manage this
-    return this._getFirstAccount()
+    return this._getFirstAccount();
   }
 
-  async getPreviousPage () {
+  async getPreviousPage() {
     // TODO: properly manage this
-    return this._getFirstAccount()
+    return this._getFirstAccount();
   }
 
-
-  setAccountToUnlock (index) {
-    this.unlockedAccount = parseInt(index, 10)
+  setAccountToUnlock(index) {
+    this.unlockedAccount = parseInt(index, 10);
   }
 
   async _importAccounts(accounts) {
-    // TODO: retrieve the selfID from the server response.
-    const walletUID = "<self_id>".toString('hex');
+    console.log('[_importAccounts] importing accounts to MetaMask');
+    // TODO: how do we manage this walletUID, maybe it should be the SelfID?
+    const walletUID = 'SELF'.toString('hex');
 
     for (let i = 0; i < accounts.length; i++) {
-      let addr = accounts[i]['address']
-      console.log(addr)
+      const accountID = accounts[i].id;
+      const addr = this._addressFromAccountID(accountID);
 
-      let alreadySaved = false;
-      for (let j = 0; j < this.accounts.length; j++) {
-        if ((this.accounts[j] === addr) &&
-            (this.accountOpts[j].walletUID === walletUID) &&
-            (this.accountOpts[j].hdPath === this.hdPath))
-            console.log("[keyring] account "+addr+" already saved")
-            alreadySaved = true;
-      }
-      if (!alreadySaved) {
-        console.log("[keyring] adding "+addr)
+      if (!this._isAlreadySaved(walletUID, addr, accountID)) {
+        console.log(`[keyring] adding ${addr}`);
         this.accounts.push(addr);
-        this.accountIndices.push(this.unlockedAccount+i);
+        this.accountIndices.push(this.unlockedAccount + i);
         this.accountOpts.push({
           walletUID,
+          accountID: accountID,
           hdPath: this.hdPath,
-        })
+        });
       }
-
-      // this.accounts.push(accounts[i]['address'])
+      console.log(this.accounts);
+      console.log(this.accountOpts);
     }
+  }
+
+  _isAlreadySaved(walletUID, addr, accountID) {
+    let alreadySaved = false;
+
+    for (let j = 0; j < this.accounts.length; j++) {
+      if ((this.accounts[j] === addr) &&
+          (this.accountOpts[j].walletUID === walletUID) &&
+          (this.accountOpts[j].id === accountID) &&
+          (this.accountOpts[j].hdPath === this.hdPath))
+          console.log("[keyring] account "+addr+" already saved")
+          alreadySaved = true;
+    }
+
+    return alreadySaved;
+  }
+
+  _addressFromAccountID(accountID) {
+    const decoded = atob(accountID);
+    return decoded.split(':')[1];
+  }
+
+  _getAccountIDForAddress(addr) {
+    for (let j = 0; j < this.accounts.length; j++) {
+      const a = this.accounts[j].toString('hex').toLowerCase();
+      const b = addr.toString('hex').toLowerCase();
+      console.log(`[_getAccountSelfID] ${a} === ${b}`);
+      console.log(this.accounts[j]);
+      if (a == b) {
+        console.log(`[_getAccountSelfID] account ${this.accountOpts[j]} found`);
+        return this.accountOpts[j].accountID;
+      }
+    }
+    return null;
+  }
+
+  removeAccount(address) {
+    this.accounts.forEach((account, i) => {
+      if (account.toLowerCase() === address.toLowerCase()) {
+        this.accounts.splice(i, 1);
+        this.accountIndices.splice(i, 1);
+        this.accountOpts.splice(i, 1);
+      }
+    });
+  }
+
+  // Deterimine if we have a connection to the Lattice and an existing wallet UID
+  // against which to make requests.
+  isUnlocked () {
+    return !!this._getCurrentWalletUID() && !!this.sdkSession;
   }
 
   signTransaction(address, tx) {
@@ -162,7 +201,21 @@ class SelfKeyring extends EventEmitter {
     return new Promise(async (resolve, reject) => {
       try {
         console.log("[keyring] signing transactions")
-        const signedTx = await SelfConnect.signTxCloud(tx);
+        let accountID = this._getAccountIDForAddress(address);
+        if (!accountID) {
+          console.log("[keyring] no accountID for " + address);
+          return reject(new Error("no accountID for " + address));
+        }
+
+        let c = new SelfConnect();
+        const signedTx = await c.signTxCloud(tx, accountID);
+        console.log(".......")
+        console.log(".......")
+        console.log(".......")
+        console.log(signedTx)
+        console.log(".......")
+        console.log(".......")
+        console.log(".......")
         const txData = tx.toJSON();
         txData.v = ethUtil.addHexPrefix(signedTx.v);
         txData.r = ethUtil.addHexPrefix(signedTx.r);

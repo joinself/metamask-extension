@@ -2,14 +2,14 @@ export default class SelfConnect {
   appUrl = 'http://localhost:8080';
 
   constructor() {
-    console.log("[self-connect] constructing")
+    console.log('[self-connect] constructing');
   }
 
   async getAccountsCloud() {
-    console.log("[self-connect] get accounts")
+    console.log('[self-connect] get accounts');
     let newAccounts = [];
 
-    //create a listener for the imported accounts
+    // create a listener for the imported accounts
     window.addEventListener(
       'message',
       (event) => {
@@ -21,10 +21,10 @@ export default class SelfConnect {
     );
 
     return new Promise(async (resolve) => {
-      const child = window.open(this.appUrl + '/v1/accounts');
+      const child = window.open(`${this.appUrl}/v1/accounts`);
       const interval = setInterval(() => {
         if (child.closed) {
-          //when the popup is closed
+          // when the popup is closed
           clearInterval(interval);
           this.accounts = newAccounts;
           resolve(newAccounts);
@@ -33,19 +33,20 @@ export default class SelfConnect {
     });
   }
 
-  async signTxCloud(transaction) {
-    console.log("[self-connect] sign transaction")
+  async signTxCloud(transaction, _accountID) {
+    console.log('[self-connect] sign transaction');
     let signedTx = {};
 
-    //create a listener for the signedTx
+    // create a listener for the signedTx
     window.addEventListener(
       'message',
       (event) => {
         if (event.data.event_id === 'signedTx') {
+          console.log(event.data.tx)
           signedTx = {
-            v: event.data.v,
-            r: event.data.r,
-            s: event.data.s,
+            v: event.data.tx.v,
+            r: event.data.tx.r,
+            s: event.data.tx.s,
           };
         }
       },
@@ -53,10 +54,14 @@ export default class SelfConnect {
     );
 
     return new Promise(async (resolve) => {
-      const child = window.open(this.appUrl + '/v1/accounts/1/sign'); //open popup
+      const tx = transaction.serialize().toString('hex');
+      // open popup
+      const url = `${this.appUrl}/v1/accounts/1/transactions/${tx}`;
+      const child = window.open(url);
 
+      console.log('sending a unsignedTx to the popup');
       child.postMessage(
-        //sends message to the popup
+        // sends message to the popup
         {
           event_id: 'unsignedTx',
           data: {
@@ -68,7 +73,7 @@ export default class SelfConnect {
 
       const interval = setInterval(() => {
         if (child.closed) {
-          //when the popup is closed
+          // when the popup is closed
           clearInterval(interval);
           resolve(signedTx);
         }
