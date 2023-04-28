@@ -33,7 +33,7 @@ export default class SelfConnect {
     });
   }
 
-  async signTxCloud(transaction, _accountID) {
+  async signTxCloud(accountID, tx) {
     console.log('[self-connect] sign transaction');
     let signedTx = {};
 
@@ -42,11 +42,19 @@ export default class SelfConnect {
       'message',
       (event) => {
         if (event.data.event_id === 'signedTx') {
+          console.log("RECEIVED TRANSACITON")
+          console.log("RECEIVED TRANSACITON")
+          console.log("RECEIVED TRANSACITON")
           console.log(event.data.tx)
+          console.log("RECEIVED TRANSACITON")
+          console.log("RECEIVED TRANSACITON")
+          console.log("RECEIVED TRANSACITON")
           signedTx = {
-            v: event.data.tx.v,
-            r: event.data.tx.r,
-            s: event.data.tx.s,
+            sig: {
+              v: event.data.tx.v,
+              r: event.data.tx.r,
+              s: event.data.tx.s,
+            },
           };
         }
       },
@@ -54,9 +62,8 @@ export default class SelfConnect {
     );
 
     return new Promise(async (resolve) => {
-      const tx = transaction.serialize().toString('hex');
       // open popup
-      const url = `${this.appUrl}/v1/accounts/1/transactions/${tx}`;
+      const url = `${this.appUrl}/v1/accounts/${accountID}/transactions/${tx}`;
       const child = window.open(url);
 
       console.log('sending a unsignedTx to the popup');
@@ -65,7 +72,7 @@ export default class SelfConnect {
         {
           event_id: 'unsignedTx',
           data: {
-            tx: transaction.serialize().toString('hex'),
+            tx: tx,
           },
         },
         '*',

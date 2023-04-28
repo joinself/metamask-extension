@@ -2,6 +2,12 @@ import SelfConnect from './SelfConnect';
 
 const EventEmitter = require('events').EventEmitter;
 const keyringType = "self"
+const EthTx = require('@ethereumjs/tx');
+const { addHexPrefix } = require("@ethereumjs/util");
+const SDK = require('gridplus-sdk');
+import { TransactionFactory, TxData, TypedTransaction } from '@ethereumjs/tx';
+const { FeeMarketEIP1559Transaction } = require( '@ethereumjs/tx' );
+import * as ethUtil from 'ethereumjs-util';
 
 class SelfKeyring extends EventEmitter {
   constructor (opts={}) {
@@ -128,8 +134,9 @@ class SelfKeyring extends EventEmitter {
     const walletUID = 'SELF'.toString('hex');
 
     for (let i = 0; i < accounts.length; i++) {
+      console.log(accounts[i]);
       const accountID = accounts[i].id;
-      const addr = this._addressFromAccountID(accountID);
+      const addr = accounts[i].address;
 
       if (!this._isAlreadySaved(walletUID, addr, accountID)) {
         console.log(`[keyring] adding ${addr}`);
@@ -138,6 +145,7 @@ class SelfKeyring extends EventEmitter {
         this.accountOpts.push({
           walletUID,
           accountID: accountID,
+          selfID: accounts[i].self_id,
           hdPath: this.hdPath,
         });
       }
@@ -161,11 +169,6 @@ class SelfKeyring extends EventEmitter {
     return alreadySaved;
   }
 
-  _addressFromAccountID(accountID) {
-    const decoded = atob(accountID);
-    return decoded.split(':')[1];
-  }
-
   _getAccountIDForAddress(addr) {
     for (let j = 0; j < this.accounts.length; j++) {
       const a = this.accounts[j].toString('hex').toLowerCase();
@@ -173,7 +176,8 @@ class SelfKeyring extends EventEmitter {
       console.log(`[_getAccountSelfID] ${a} === ${b}`);
       console.log(this.accounts[j]);
       if (a == b) {
-        console.log(`[_getAccountSelfID] account ${this.accountOpts[j]} found`);
+        console.log(`[_getAccountSelfID] account ${this.accountOpts[j].accountID} found`);
+        console.log(this.accountOpts[j])
         return this.accountOpts[j].accountID;
       }
     }
@@ -192,30 +196,125 @@ class SelfKeyring extends EventEmitter {
 
   // Deterimine if we have a connection to the Lattice and an existing wallet UID
   // against which to make requests.
-  isUnlocked () {
+  isUnlocked() {
     return !!this._getCurrentWalletUID() && !!this.sdkSession;
   }
 
-  signTransaction(address, tx) {
-    console.log("[keyring] signTransaction called")
+  _getCurrentWalletUID() {
+    return 'self';
+  }
+
+  async signTransaction(address, tx) {
     return new Promise(async (resolve, reject) => {
+      console.log('[keyring] signTransaction called');
+      // We will be adding a signature to hydration data for a new
+      // transaction object since the sig data is not mutable.
+      // Setup `txToReturn` data and start adding to it.
+
       try {
-        console.log("[keyring] signing transactions")
-        let accountID = this._getAccountIDForAddress(address);
+        console.log('[keyring] signing transactions');
+        const txToReturn = tx.toJSON();
+        // txToReturn.type = tx._type || null;
+        txToReturn.type = null;
+
+        // Find the accountID for the address
+        const accountID = this._getAccountIDForAddress(address);
         if (!accountID) {
-          console.log("[keyring] no accountID for " + address);
-          return reject(new Error("no accountID for " + address));
+          console.log(`[keyring] no accountID for ${address}`);
+          return new Error(`no accountID for ${address}`);
         }
 
-        let c = new SelfConnect();
-        const signedTx = await c.signTxCloud(tx, accountID);
-        console.log(".......")
-        console.log(".......")
-        console.log(".......")
-        console.log(signedTx)
-        console.log(".......")
-        console.log(".......")
-        console.log(".......")
+        // çççççççççççççççççççççççç
+        const messageToSign = tx.getMessageToSign(false);
+
+        const rawTxHex = Buffer.isBuffer(messageToSign)
+          ? messageToSign.toString('hex')
+          : ethUtil.rlp.encode(messageToSign).toString('hex');
+        console.log(rawTxHex);
+
+        // çççççççççççççççççççççççç
+
+        // Send the transaction to Self to be signed
+        const c = new SelfConnect();
+        // const serializedTX = tx.serialize().toString('hex');
+        const signedTx = await c.signTxCloud(accountID, rawTxHex);
+
+        // Because tx will be immutable, first get a plain javascript object that
+        // represents the transaction. Using txData here as it aligns with the
+        // nomenclature of ethereumjs/tx.
+        const txData = tx.toJSON();
+        // The fromTxData utility expects a type to support transactions with a type other than 0
+        // txData.type = tx.type;
+        txData.type = null;
+        // The fromTxData utility expects v,r and s to be hex prefixed
+        txData.v = ethUtil.addHexPrefix(signedTx.sig.v);
+        txData.r = ethUtil.addHexPrefix(signedTx.sig.r);
+        txData.s = ethUtil.addHexPrefix(signedTx.sig.s);
+        // Adopt the 'common' option from the original transaction and set the
+        // returned object to be frozen if the original is frozen.
+        resolve(TransactionFactory.fromTxData(txData, {
+          common: tx.common,
+          freeze: Object.isFrozen(tx),
+        }));
+
+
+        /*
+        // Pack the signature into the return object
+        txToReturn.r = addHexPrefix(signedTx.sig.r.toString('hex'));
+        txToReturn.s = addHexPrefix(signedTx.sig.s.toString('hex'));
+        // Legacy signatures have `v` in the response
+        let v = '0';
+        if (signedTx.sig.v === undefined) {
+          v = SDK.Utils.getV(tx, signedTx);
+        } else {
+          v = signedTx.sig.v.length === 0 ? '0' : signedTx.sig.v.toString('hex');
+        }
+
+        txToReturn.v = addHexPrefix(v);
+        console.log("txToReturn.v : ")
+        console.log(txToReturn.v);
+
+        console.log('END:1');
+
+
+        // Adopt the 'common' option from the original transaction and set the
+        // returned object to be frozen if the original is frozen.
+        console.log("llllllllll")
+        console.log(txToReturn);
+        console.log("llllllllll")
+        const finalTx = TransactionFactory.fromTxData(txToReturn, {
+          common: tx.common,
+          freeze: Object.isFrozen(tx),
+        });
+
+        resolve(finalTx);
+*/
+        /*
+        const ethTx = EthTx.TransactionFactory.fromTxData(txToReturn, {
+          common: tx.common,
+          freeze: Object.isFrozen(tx),
+        });
+
+        const feeMarketTransaction = FeeMarketEIP1559Transaction.fromTxData(txToReturn, {
+            common: tx.common,
+            freeze: Object.isFrozen(tx),
+        });
+        console.log('...............');
+        console.log('...............');
+        console.log('...............');
+        console.log('...............');
+        console.log(tx);
+        console.log(txToReturn);
+        console.log(feeMarketTransaction);
+        console.log('...............');
+        console.log('...............');
+        console.log('...............');
+        console.log('...............');
+
+        resolve(feeMarketTransaction);
+        */
+
+  /*
         const txData = tx.toJSON();
         txData.v = ethUtil.addHexPrefix(signedTx.v);
         txData.r = ethUtil.addHexPrefix(signedTx.r);
@@ -228,6 +327,7 @@ class SelfKeyring extends EventEmitter {
           { common, freeze },
         );
         resolve(feeMarketTransaction);
+      */
       } catch (err) {
         reject(new Error(err));
       }
