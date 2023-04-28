@@ -34,6 +34,8 @@ export default function KeyRingLabel({ keyring }) {
     case HardwareKeyringTypes.lattice:
       label = HardwareKeyringNames.lattice;
       break;
+    case HardwareKeyringTypes.self:
+      label = HardwareKeyringNames.self;
     default:
       return null;
   }

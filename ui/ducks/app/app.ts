@@ -41,6 +41,7 @@ interface AppState {
     trezor: string;
     ledger: string;
     lattice: string;
+    self: string;
   };
   networksTabSelectedRpcUrl: string | null;
   requestAccountTabs: Record<string, number>; // [url.origin]: tab.id
@@ -103,6 +104,7 @@ const initialState: AppState = {
     trezor: `m/44'/60'/0'/0`,
     ledger: `m/44'/60'/0'/0/0`,
     lattice: `m/44'/60'/0'/0`,
+    self: `m/44'/60'/0'/0`,
   },
   networksTabSelectedRpcUrl: '',
   requestAccountTabs: {},

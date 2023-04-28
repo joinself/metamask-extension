@@ -14,6 +14,7 @@ import { EVENT, EVENT_NAMES } from '../../../../shared/constants/metametrics';
 import { SECOND } from '../../../../shared/constants/time';
 import {
   HardwareDeviceNames,
+  HardwareKeyringNames,
   LedgerTransportTypes,
 } from '../../../../shared/constants/hardware-wallets';
 import ZENDESK_URLS from '../../../helpers/constants/zendesk-url';
@@ -52,10 +53,15 @@ const TREZOR_HD_PATHS = [
   { name: `Trezor Testnets`, value: TREZOR_TESTNET_PATH },
 ];
 
+const SELF_HD_PATHS = [
+  { name: `BIP44 Standard (e.g. MetaMask, Self)`, value: BIP44_PATH },
+];
+
 const HD_PATHS = {
   ledger: LEDGER_HD_PATHS,
   lattice: LATTICE_HD_PATHS,
   trezor: TREZOR_HD_PATHS,
+  self: SELF_HD_PATHS,
 };
 
 class ConnectHardwareForm extends Component {
@@ -92,6 +98,7 @@ class ConnectHardwareForm extends Component {
       HardwareDeviceNames.trezor,
       HardwareDeviceNames.ledger,
       HardwareDeviceNames.lattice,
+      HardwareKeyringNames.self,
     ]) {
       const path = this.props.defaultHdPaths[device];
       const unlocked = await this.props.checkHardwareStatus(device, path);
@@ -109,7 +116,7 @@ class ConnectHardwareForm extends Component {
     }
 
     // Default values
-    this.getPage(device, 0, this.props.defaultHdPaths[device]);
+    this.getPage(device, 0, this.props.defaultHdPaths[device.toLowerCase()]);
   };
 
   onPathChange = (path) => {

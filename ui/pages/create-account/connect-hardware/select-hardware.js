@@ -6,6 +6,7 @@ import LogoLedger from '../../../components/ui/logo/logo-ledger';
 import LogoQRBased from '../../../components/ui/logo/logo-qr-based';
 import LogoTrezor from '../../../components/ui/logo/logo-trezor';
 import LogoLattice from '../../../components/ui/logo/logo-lattice';
+import LogoSelf from '../../../components/ui/logo/logo-self';
 
 import {
   HardwareDeviceNames,
@@ -105,6 +106,21 @@ export default class SelectHardware extends Component {
     );
   }
 
+  renderConnectToSelfButton() {
+    return (
+      <button
+        className={classnames('hw-connect__btn', {
+          selected: this.state.selectedDevice === HardwareDeviceNames.self,
+        })}
+        onClick={(_) =>
+          this.setState({ selectedDevice: HardwareDeviceNames.self })
+        }
+      >
+        <LogoSelf className="hw-connect__btn__img" ariaLabel="Self" />
+      </button>
+    );
+  }
+
   renderButtons() {
     return (
       <>
@@ -119,6 +135,12 @@ export default class SelectHardware extends Component {
           {this.shouldShowConnectButton() &&
             this.renderConnectToLatticeButton()}
           {this.renderConnectToQRButton()}
+        </div>
+        <div
+          className="hw-connect__btn-wrapper"
+          style={{ margin: '10px 0 0 0', paddingLeft: '10px' }}
+        >
+          {this.renderConnectToSelfButton()}
         </div>
       </>
     );
@@ -185,6 +207,8 @@ export default class SelectHardware extends Component {
         return this.renderTrezorTutorialSteps();
       case HardwareDeviceNames.lattice:
         return this.renderLatticeTutorialSteps();
+      case HardwareDeviceNames.self:
+        return this.renderSelfTutorialSteps();
       case HardwareDeviceNames.qr:
         return this.renderQRHardwareWalletSteps();
       default:
@@ -278,6 +302,10 @@ export default class SelectHardware extends Component {
         ))}
       </div>
     );
+  }
+
+  renderSelfTutorialSteps() {
+    return <p>None</p>;
   }
 
   renderLatticeTutorialSteps() {
